@@ -29,13 +29,19 @@ export function passcodeMatches(input: string): boolean {
   return Boolean(pass) && safeEqual(sign(`pc:${input}`), sign(`pc:${pass}`));
 }
 
-function readCookie(req: NextApiRequest): string | undefined {
+/**
+ * The browser sends the cookie; the Android app (Jarvis) can't rely on cookies,
+ * so it sends the same signed token as `Authorization: Bearer <token>`.
+ */
+function readToken(req: NextApiRequest): string | undefined {
+  const auth = req.headers.authorization;
+  if (typeof auth === "string" && auth.startsWith("Bearer ")) return auth.slice(7).trim();
   return req.cookies?.[COOKIE];
 }
 
 export function hasSession(req: NextApiRequest): boolean {
   try {
-    const token = readCookie(req);
+    const token = readToken(req);
     if (!token) return false;
     const [v, iat, sig] = token.split(".");
     if (v !== "v1" || !iat || !sig) return false;
@@ -46,13 +52,16 @@ export function hasSession(req: NextApiRequest): boolean {
   }
 }
 
-export function startSession(req: NextApiRequest, res: NextApiResponse) {
+/** Sets the session cookie and returns the token (the app stores it and sends it as a Bearer token). */
+export function startSession(req: NextApiRequest, res: NextApiResponse): string {
   const iat = Math.floor(Date.now() / 1000).toString();
+  const token = `v1.${iat}.${sign(`v1.${iat}`)}`;
   const secure = req.headers["x-forwarded-proto"] === "https" || process.env.NODE_ENV === "production";
   res.setHeader(
     "Set-Cookie",
-    `${COOKIE}=v1.${iat}.${sign(`v1.${iat}`)}; Path=/; Max-Age=${MAX_AGE_S}; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`,
+    `${COOKIE}=${token}; Path=/; Max-Age=${MAX_AGE_S}; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`,
   );
+  return token;
 }
 
 /** For API routes: returns true if allowed, otherwise sends 401 and returns false. */

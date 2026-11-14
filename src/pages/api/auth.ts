@@ -18,6 +18,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const passcode = String(req.body?.passcode ?? "").trim().slice(0, 100);
   if (!passcodeMatches(passcode)) return res.status(401).json({ error: "That's not it." });
 
-  startSession(req, res);
-  res.json({ unlocked: true });
+  const token = startSession(req, res);
+  // The web app uses the cookie; the Android app keeps the token and sends it as a Bearer header.
+  res.json({ unlocked: true, token });
 }
