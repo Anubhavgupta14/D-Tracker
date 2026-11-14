@@ -47,6 +47,8 @@ export interface JarvisContext {
   };
   today: { pain?: number; moods?: string[] };
   canCall: boolean;
+  /** True on the Android app, which can run Help mode (siren, flashlight, live location to him). */
+  helpMode?: boolean;
 }
 
 /* ---------- Tools ---------- */
@@ -58,7 +60,8 @@ export type ToolName =
   | "web_search"
   | "show_date_plan"
   | "open_comfort_tool"
-  | "log_cycle";
+  | "log_cycle"
+  | "start_help_mode";
 
 /**
  * Where each tool runs:
@@ -74,6 +77,7 @@ export const TOOL_KIND: Record<ToolName, "server" | "action" | "ask"> = {
   show_date_plan: "action",
   open_comfort_tool: "action",
   log_cycle: "action",
+  start_help_mode: "action",
 };
 
 export interface DatePlanStop {
@@ -209,7 +213,21 @@ export const FUNCTION_DECLARATIONS = [
       required: ["action"],
     },
   },
+  {
+    name: "start_help_mode",
+    description:
+      "EMERGENCY. Start Help mode on her phone: a loud siren, flashing torch and screen, and her live location emailed to Anubhav. Use IMMEDIATELY, without asking first, whenever she says she feels unsafe, scared of someone, is being followed or harassed, is in danger, or asks for help/SOS. She gets a 5-second countdown to cancel.",
+    parameters: {
+      type: "OBJECT",
+      properties: { reason: { ...STR, description: "A few words on what's happening, passed on to Anubhav." } },
+    },
+  },
 ];
+
+/** Tools only some clients can run. */
+export function declarationsFor(ctx: JarvisContext) {
+  return FUNCTION_DECLARATIONS.filter((d) => d.name !== "start_help_mode" || ctx.helpMode);
+}
 
 /* ---------- Stream events (newline-delimited JSON) ---------- */
 

@@ -41,6 +41,11 @@ Anything she brings: love and the relationship with ${him}, missing him, argumen
 - Health: be accurate and practical (she's a clinician; don't over-explain basics). If something sounds like a red flag (very heavy bleeding, severe pain, fainting, a very late period with possible pregnancy), say so gently and suggest seeing a doctor.
 - Relationship advice: be on her side and honest. Encourage talking to ${him} directly when it matters.
 
+# Her safety comes first
+${ctx.helpMode
+    ? `If she says she feels unsafe, scared of someone, is being followed or harassed, is in danger, or asks for help or SOS: call start_help_mode IMMEDIATELY, before anything else and without asking questions. Then, in one or two calm sentences: Help mode is starting, ${him} is getting her location, and if she is in immediate danger she should call 112. No jokes, no wit, no teasing in an emergency.`
+    : `If she says she feels unsafe or is in danger: get_location, then send_to_engineer with category sos and urgency asap, and tell her calmly to call 112 if she is in immediate danger. No jokes in an emergency.`}
+
 # Acting, not just talking
 You can do things. When she asks, do them right away with your tools, then confirm in one line.
 HARD RULE: never say you have done, are doing, or will do something (sending, calling, logging, opening) unless you call the tool for it in this same turn. Call the tool first; speak after you see its result. If a tool fails, tell her honestly and offer an alternative.
@@ -83,6 +88,8 @@ export function toolLabel(name: string, args: Record<string, unknown>): string {
       return "Opening comfort tools";
     case "log_cycle":
       return "Updating your tracker";
+    case "start_help_mode":
+      return "Starting Help mode";
     default:
       return "Working on it";
   }

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import {
-  FUNCTION_DECLARATIONS,
+  declarationsFor,
   TOOL_KIND,
   type Content,
   type JarvisEvent,
@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     "X-Accel-Buffering": "no",
   });
   const send = (e: JarvisEvent) => res.write(JSON.stringify(e) + "\n");
-  const tools = [{ functionDeclarations: FUNCTION_DECLARATIONS }];
+  const tools = [{ functionDeclarations: declarationsFor(body.context) }];
 
   try {
     const [history, settings] = await Promise.all([getHistory(), getSettings()]);
@@ -162,6 +162,15 @@ async function runCalls(
       } else if (kind === "action") {
         if (call.name === "call_engineer" && !body.context.canCall) {
           result = { error: "His phone number isn't set up in the app yet. Offer to email him instead." };
+        } else if (call.name === "start_help_mode" && !body.context.helpMode) {
+          result = { error: "Help mode only works in the Android app. Use get_location and send_to_engineer (category sos) instead." };
+        } else if (call.name === "start_help_mode") {
+          send({ type: "action", call });
+          result = {
+            ok: true,
+            status:
+              "Help mode is counting down on her screen (5 s, she can cancel). When it starts, the siren and lights run and her location is emailed to Anubhav automatically; the screen has buttons to call or text him.",
+          };
         } else {
           send({ type: "action", call });
           result = { ok: true, status: "Done on her screen." };

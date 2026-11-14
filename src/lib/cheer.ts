@@ -162,6 +162,14 @@ export function whatsappLink(phone: string, text: string) {
 }
 
 export function telLink(phone: string) {
+  return `tel:${e164(phone)}`;
+}
+
+/** "+<country><number>". A bare 10-digit number is Indian (+91), so it isn't dialled as a foreign code. */
+export function e164(phone: string) {
   const digits = phone.replace(/[^\d+]/g, "");
-  return `tel:${digits.startsWith("+") ? digits : `+${digits}`}`;
+  if (digits.startsWith("+")) return digits;
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 11 && digits.startsWith("0")) return `+91${digits.slice(1)}`;
+  return `+${digits}`;
 }
