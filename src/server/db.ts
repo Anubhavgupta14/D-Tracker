@@ -147,3 +147,73 @@ export const saveLook = (id: string, payload: Record<string, unknown>) =>
 
 export const removeLook = (id: string) =>
   rest(`glow_looks?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+
+/* ---------- Live location (she shares; the admin page reads) ---------- */
+
+export interface ShareRow {
+  id: string;
+  reason: "share" | "sos";
+  started_at: string;
+  ends_at: string;
+  stopped_at: string | null;
+  last_point_at: string | null;
+}
+
+export interface PointRow {
+  lat: number;
+  lng: number;
+  accuracy: number | null;
+  speed: number | null;
+  battery: number | null;
+  recorded_at: string;
+}
+
+const SHARE_COLS = "id,reason,started_at,ends_at,stopped_at,last_point_at";
+const POINT_COLS = "lat,lng,accuracy,speed,battery,recorded_at";
+
+export const createShare = (row: { id: string; reason: "share" | "sos"; ends_at: string }) =>
+  rest("location_shares", { method: "POST", body: [row], prefer: "return=minimal" });
+
+export async function getShare(id: string): Promise<ShareRow | null> {
+  const rows = await rest<ShareRow[]>(`location_shares?select=${SHARE_COLS}&id=eq.${encodeURIComponent(id)}`);
+  return rows[0] ?? null;
+}
+
+/** The share running right now, if any (not stopped, not past its end). */
+export async function getActiveShare(): Promise<ShareRow | null> {
+  const now = new Date().toISOString();
+  const rows = await rest<ShareRow[]>(
+    `location_shares?select=${SHARE_COLS}&stopped_at=is.null&ends_at=gt.${now}&order=started_at.desc&limit=1`,
+  );
+  return rows[0] ?? null;
+}
+
+export const updateShare = (id: string, patch: Partial<Pick<ShareRow, "stopped_at" | "last_point_at" | "ends_at">>) =>
+  rest(`location_shares?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: patch, prefer: "return=minimal" });
+
+export const insertPoints = (rows: (PointRow & { share_id: string })[]) =>
+  rows.length ? rest("location_points", { method: "POST", body: rows, prefer: "return=minimal" }) : Promise.resolve();
+
+export const listShares = (limit = 40) =>
+  rest<(ShareRow & { location_points: { count: number }[] })[]>(
+    `location_shares?select=${SHARE_COLS},location_points(count)&order=started_at.desc&limit=${limit}`,
+  );
+
+export const getPoints = (shareId: string, limit = 5000) =>
+  rest<PointRow[]>(
+    `location_points?select=${POINT_COLS}&share_id=eq.${encodeURIComponent(shareId)}&order=recorded_at.asc&limit=${limit}`,
+  );
+
+export const deleteShare = (id: string) =>
+  rest(`location_shares?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+
+/* ---------- Admin login guard (kept in the DB so it holds across server instances) ---------- */
+
+export async function recentAdminFailures(minutes: number): Promise<number> {
+  const since = new Date(Date.now() - minutes * 60_000).toISOString();
+  const rows = await rest<{ id: number }[]>(`admin_login_failures?select=id&at=gt.${since}&limit=100`);
+  return rows.length;
+}
+
+export const recordAdminFailure = (ip: string) =>
+  rest("admin_login_failures", { method: "POST", body: [{ ip: ip.slice(0, 64) }], prefer: "return=minimal" });

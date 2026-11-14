@@ -39,7 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const body = req.body ?? {};
   const event: Event = body.event === "update" || body.event === "safe" ? body.event : "start";
-  const source = body.source === "jarvis" ? "Jarvis" : "the Help button";
+  const source =
+    body.source === "jarvis" ? "Jarvis" : body.source === "shortcut" ? "the power-button shortcut (phone may be in her pocket)" : "the Help button";
   const reason = typeof body.reason === "string" ? body.reason.slice(0, 200) : "";
   const locError = typeof body.locationError === "string" ? body.locationError.slice(0, 140) : "";
   const battery =

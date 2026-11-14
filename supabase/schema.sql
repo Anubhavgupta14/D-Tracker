@@ -70,6 +70,41 @@ create table if not exists public.glow_looks (
   created_at  timestamptz not null default now()
 );
 
+-- ---------- Live location ----------
+
+-- A stretch of time she chose to share her location (or Help mode shared it).
+create table if not exists public.location_shares (
+  id             uuid primary key,
+  reason         text not null default 'share' check (reason in ('share', 'sos')),
+  started_at     timestamptz not null default now(),
+  ends_at        timestamptz not null,
+  stopped_at     timestamptz,
+  last_point_at  timestamptz
+);
+create index if not exists location_shares_started_idx on public.location_shares (started_at desc);
+
+-- The points her phone sent during a share.
+create table if not exists public.location_points (
+  id           bigint generated always as identity primary key,
+  share_id     uuid not null references public.location_shares (id) on delete cascade,
+  lat          double precision not null check (lat between -90 and 90),
+  lng          double precision not null check (lng between -180 and 180),
+  accuracy     real,
+  speed        real,
+  battery      real,
+  recorded_at  timestamptz not null,
+  created_at   timestamptz not null default now()
+);
+create index if not exists location_points_share_idx on public.location_points (share_id, recorded_at);
+
+-- Wrong admin passcodes, to slow down guessing across every server instance.
+create table if not exists public.admin_login_failures (
+  id  bigint generated always as identity primary key,
+  at  timestamptz not null default now(),
+  ip  text
+);
+create index if not exists admin_login_failures_at_idx on public.admin_login_failures (at);
+
 -- ---------- Keep updated_at fresh ----------
 
 create or replace function public.touch_updated_at() returns trigger
@@ -97,4 +132,7 @@ alter table public.jarvis_messages  enable row level security;
 alter table public.jarvis_history   enable row level security;
 alter table public.glow_profile     enable row level security;
 alter table public.glow_looks       enable row level security;
+alter table public.location_shares       enable row level security;
+alter table public.location_points       enable row level security;
+alter table public.admin_login_failures  enable row level security;
 -- (Intentionally no policies: anon/authenticated roles get nothing.)
